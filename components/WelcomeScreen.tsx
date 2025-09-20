@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Heart, Users, MessageCircle, Brain } from 'lucide-react';
+import { useMiniKit } from '@coinbase/minikit';
 
 interface WelcomeScreenProps {
   onConnect: (userData: any) => void;
@@ -9,15 +10,55 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
   const [isConnecting, setIsConnecting] = useState(false);
+  const { connectWallet, walletAddress } = useMiniKit();
 
   const handleConnect = async () => {
     setIsConnecting(true);
-    
-    // Simulate connection process
-    setTimeout(() => {
+
+    try {
+      // Connect wallet if not already connected
+      if (!walletAddress) {
+        await connectWallet();
+      }
+
+      // Create or get user from our API
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          farcasterId: walletAddress ? `fc_${walletAddress.slice(-8)}` : 'anonymous',
+          displayName: 'New User',
+          bio: 'Just joined EchoSphere',
+          interests: []
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        onConnect(result.data);
+      } else {
+        // Fallback to mock data if API fails
+        const mockUser = {
+          userId: 'user_123',
+          farcasterId: walletAddress ? `fc_${walletAddress.slice(-8)}` : 'fc_456',
+          displayName: 'Alex Chen',
+          bio: 'Looking to connect with like-minded people',
+          interests: ['Mental Health', 'Social Anxiety', 'Book Club'],
+          joinedGroups: [],
+          activeSessions: [],
+          avatar: null
+        };
+        onConnect(mockUser);
+      }
+    } catch (error) {
+      console.error('Connection error:', error);
+      // Fallback to mock data
       const mockUser = {
         userId: 'user_123',
-        farcasterId: 'fc_456',
+        farcasterId: walletAddress ? `fc_${walletAddress.slice(-8)}` : 'fc_456',
         displayName: 'Alex Chen',
         bio: 'Looking to connect with like-minded people',
         interests: ['Mental Health', 'Social Anxiety', 'Book Club'],
@@ -25,10 +66,10 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
         activeSessions: [],
         avatar: null
       };
-      
       onConnect(mockUser);
+    } finally {
       setIsConnecting(false);
-    }, 2000);
+    }
   };
 
   return (

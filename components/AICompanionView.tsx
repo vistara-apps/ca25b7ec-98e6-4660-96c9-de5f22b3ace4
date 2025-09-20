@@ -35,34 +35,59 @@ export function AICompanionView({ user, onBack }: AICompanionViewProps) {
     scrollToBottom();
   }, [messages]);
 
-  const generateAIResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    if (lowerMessage.includes('sad') || lowerMessage.includes('down') || lowerMessage.includes('depressed')) {
-      return "I hear that you're going through a difficult time. It's completely normal to feel sad sometimes, and I want you to know that your feelings are valid. What's been weighing on your mind lately?";
+  const generateAIResponse = async (userMessage: string, conversationHistory: AIChatMessage[]): Promise<string> => {
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          userId: user.userId,
+          conversationHistory: conversationHistory.slice(-10) // Send last 10 messages for context
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        return result.data.response;
+      } else {
+        throw new Error('API call failed');
+      }
+    } catch (error) {
+      console.error('AI API error:', error);
+
+      // Fallback responses if API fails
+      const lowerMessage = userMessage.toLowerCase();
+
+      if (lowerMessage.includes('sad') || lowerMessage.includes('down') || lowerMessage.includes('depressed')) {
+        return "I hear that you're going through a difficult time. It's completely normal to feel sad sometimes, and I want you to know that your feelings are valid. What's been weighing on your mind lately?";
+      }
+
+      if (lowerMessage.includes('anxious') || lowerMessage.includes('worried') || lowerMessage.includes('nervous')) {
+        return "Anxiety can feel overwhelming, but you're not alone in this. Take a deep breath with me. What specific thoughts or situations are making you feel anxious right now?";
+      }
+
+      if (lowerMessage.includes('lonely') || lowerMessage.includes('alone') || lowerMessage.includes('isolated')) {
+        return "Feeling lonely is one of the hardest emotions to experience. I'm here with you right now, and there are people in our community who understand exactly what you're going through. Have you considered joining one of our support groups?";
+      }
+
+      if (lowerMessage.includes('good') || lowerMessage.includes('great') || lowerMessage.includes('happy')) {
+        return "I'm so glad to hear you're feeling good! It's wonderful when we can appreciate these positive moments. What's been bringing you joy lately?";
+      }
+
+      // Default supportive responses
+      const supportiveResponses = [
+        "Thank you for sharing that with me. Your feelings matter, and I'm here to listen. Tell me more about what's on your mind.",
+        "I appreciate you opening up. It takes courage to express how you're feeling. How can I best support you right now?",
+        "You've taken an important step by reaching out. Remember, it's okay to not be okay sometimes. What would help you feel a little better today?",
+        "I'm here to listen without judgment. Your experiences and feelings are important. What's been the most challenging part of your day?"
+      ];
+
+      return supportiveResponses[Math.floor(Math.random() * supportiveResponses.length)];
     }
-    
-    if (lowerMessage.includes('anxious') || lowerMessage.includes('worried') || lowerMessage.includes('nervous')) {
-      return "Anxiety can feel overwhelming, but you're not alone in this. Take a deep breath with me. What specific thoughts or situations are making you feel anxious right now?";
-    }
-    
-    if (lowerMessage.includes('lonely') || lowerMessage.includes('alone') || lowerMessage.includes('isolated')) {
-      return "Feeling lonely is one of the hardest emotions to experience. I'm here with you right now, and there are people in our community who understand exactly what you're going through. Have you considered joining one of our support groups?";
-    }
-    
-    if (lowerMessage.includes('good') || lowerMessage.includes('great') || lowerMessage.includes('happy')) {
-      return "I'm so glad to hear you're feeling good! It's wonderful when we can appreciate these positive moments. What's been bringing you joy lately?";
-    }
-    
-    // Default supportive responses
-    const supportiveResponses = [
-      "Thank you for sharing that with me. Your feelings matter, and I'm here to listen. Tell me more about what's on your mind.",
-      "I appreciate you opening up. It takes courage to express how you're feeling. How can I best support you right now?",
-      "You've taken an important step by reaching out. Remember, it's okay to not be okay sometimes. What would help you feel a little better today?",
-      "I'm here to listen without judgment. Your experiences and feelings are important. What's been the most challenging part of your day?"
-    ];
-    
-    return supportiveResponses[Math.floor(Math.random() * supportiveResponses.length)];
   };
 
   const handleSendMessage = async () => {
@@ -76,24 +101,39 @@ export function AICompanionView({ user, onBack }: AICompanionViewProps) {
       isAI: false
     };
 
+    const currentMessage = inputMessage;
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI thinking time
-    setTimeout(() => {
+    try {
+      const aiResponseText = await generateAIResponse(currentMessage, messages);
+
       const aiResponse: AIChatMessage = {
         id: (Date.now() + 1).toString(),
         userId: user.userId,
-        message: generateAIResponse(inputMessage),
+        message: aiResponseText,
         timestamp: new Date(),
         isAI: true,
         sentiment: 'positive'
       };
 
       setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Fallback response
+      const fallbackResponse: AIChatMessage = {
+        id: (Date.now() + 1).toString(),
+        userId: user.userId,
+        message: "I'm here to listen. What's been on your mind?",
+        timestamp: new Date(),
+        isAI: true,
+        sentiment: 'neutral'
+      };
+      setMessages(prev => [...prev, fallbackResponse]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleQuickPrompt = (prompt: string) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Users, Lock, Globe, Plus, Search } from 'lucide-react';
 import { User, Group } from '../lib/types';
 import { GroupCard } from './GroupCard';
@@ -14,51 +14,118 @@ interface GroupsViewProps {
 export function GroupsView({ user, onBack }: GroupsViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock groups data
-  const mockGroups: Group[] = [
-    {
-      groupId: '1',
-      name: 'Anxiety Support Circle',
-      description: 'A safe space to share experiences and coping strategies for anxiety.',
-      topic: 'Mental Health',
-      memberIds: ['1', '2', '3', '4', '5'],
-      createdAt: new Date('2024-01-15'),
-      isPrivate: false,
-      memberCount: 12
-    },
-    {
-      groupId: '2',
-      name: 'Career Transition Support',
-      description: 'Navigate career changes with peers who understand the journey.',
-      topic: 'Career Transition',
-      memberIds: ['1', '2', '3'],
-      createdAt: new Date('2024-01-20'),
-      isPrivate: true,
-      memberCount: 8
-    },
-    {
-      groupId: '3',
-      name: 'Book Lovers Unite',
-      description: 'Discuss books, share recommendations, and connect through stories.',
-      topic: 'Book Club',
-      memberIds: ['1', '2'],
-      createdAt: new Date('2024-01-25'),
-      isPrivate: false,
-      memberCount: 15
+  // Fetch groups from API
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedCategory !== 'all') {
+          params.append('topic', selectedCategory);
+        }
+        if (searchQuery) {
+          params.append('search', searchQuery);
+        }
+
+        const response = await fetch(`/api/groups?${params}`);
+        const result = await response.json();
+
+        if (result.success) {
+          setGroups(result.data);
+        } else {
+          console.error('Failed to fetch groups:', result.error);
+          // Fallback to mock data
+          setGroups([
+            {
+              groupId: '1',
+              name: 'Anxiety Support Circle',
+              description: 'A safe space to share experiences and coping strategies for anxiety.',
+              topic: 'Mental Health',
+              memberIds: ['user_123'],
+              createdAt: new Date('2024-01-15'),
+              isPrivate: false,
+              memberCount: 1
+            },
+            {
+              groupId: '2',
+              name: 'Career Transition Support',
+              description: 'Navigate career changes with peers who understand the journey.',
+              topic: 'Career Transition',
+              memberIds: [],
+              createdAt: new Date('2024-01-20'),
+              isPrivate: true,
+              memberCount: 0
+            },
+            {
+              groupId: '3',
+              name: 'Book Lovers Unite',
+              description: 'Discuss books, share recommendations, and connect through stories.',
+              topic: 'Book Club',
+              memberIds: [],
+              createdAt: new Date('2024-01-25'),
+              isPrivate: false,
+              memberCount: 0
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching groups:', error);
+        // Fallback to mock data
+        setGroups([
+          {
+            groupId: '1',
+            name: 'Anxiety Support Circle',
+            description: 'A safe space to share experiences and coping strategies for anxiety.',
+            topic: 'Mental Health',
+            memberIds: ['user_123'],
+            createdAt: new Date('2024-01-15'),
+            isPrivate: false,
+            memberCount: 1
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroups();
+  }, [selectedCategory, searchQuery]);
+
+  const filteredGroups = groups;
+
+  const handleJoinGroup = async (groupId: string) => {
+    try {
+      const response = await fetch('/api/groups', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          groupId,
+          userId: user.userId,
+          action: 'join'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        setGroups(prevGroups =>
+          prevGroups.map(group =>
+            group.groupId === groupId
+              ? { ...group, memberIds: [...group.memberIds, user.userId], memberCount: group.memberCount + 1 }
+              : group
+          )
+        );
+      } else {
+        console.error('Failed to join group:', result.error);
+      }
+    } catch (error) {
+      console.error('Error joining group:', error);
     }
-  ];
-
-  const filteredGroups = mockGroups.filter(group => {
-    const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         group.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || group.topic === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleJoinGroup = (groupId: string) => {
-    console.log('Joining group:', groupId);
-    // Implement join group logic
   };
 
   return (
@@ -117,21 +184,30 @@ export function GroupsView({ user, onBack }: GroupsViewProps) {
 
       {/* Groups List */}
       <div className="px-6 space-y-4">
-        {filteredGroups.map((group) => (
-          <GroupCard
-            key={group.groupId}
-            group={group}
-            onJoin={() => handleJoinGroup(group.groupId)}
-            isJoined={user.joinedGroups.includes(group.groupId)}
-          />
-        ))}
-
-        {filteredGroups.length === 0 && (
+        {loading ? (
           <div className="text-center py-12">
-            <Users className="w-16 h-16 text-white/20 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No groups found</h3>
-            <p className="text-white/60">Try adjusting your search or browse different categories.</p>
+            <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-white/60">Loading groups...</p>
           </div>
+        ) : (
+          <>
+            {filteredGroups.map((group) => (
+              <GroupCard
+                key={group.groupId}
+                group={group}
+                onJoin={() => handleJoinGroup(group.groupId)}
+                isJoined={user.joinedGroups.includes(group.groupId)}
+              />
+            ))}
+
+            {filteredGroups.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No groups found</h3>
+                <p className="text-white/60">Try adjusting your search or browse different categories.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

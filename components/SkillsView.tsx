@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Brain, Lock, CheckCircle, Play, Trophy } from 'lucide-react';
 import { User, SkillModule } from '../lib/types';
 import { SkillModuleCard } from './SkillModuleCard';
@@ -13,68 +13,137 @@ interface SkillsViewProps {
 
 export function SkillsView({ user, onBack }: SkillsViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [skillModules, setSkillModules] = useState<SkillModule[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock skill modules data
-  const mockSkillModules: SkillModule[] = [
-    {
-      moduleId: '1',
-      name: 'Starting Conversations',
-      description: 'Learn effective techniques to initiate meaningful conversations with confidence.',
-      category: 'communication',
-      isLocked: false,
-      isCompleted: true,
-      progress: 100
-    },
-    {
-      moduleId: '2',
-      name: 'Active Listening Skills',
-      description: 'Master the art of truly hearing and understanding others in conversations.',
-      category: 'listening',
-      isLocked: false,
-      isCompleted: false,
-      progress: 60
-    },
-    {
-      moduleId: '3',
-      name: 'Understanding Emotions',
-      description: 'Develop deeper empathy by recognizing and responding to emotional cues.',
-      category: 'empathy',
-      isLocked: false,
-      isCompleted: false,
-      progress: 30
-    },
-    {
-      moduleId: '4',
-      name: 'Overcoming Social Anxiety',
-      description: 'Build confidence and reduce anxiety in social situations with proven strategies.',
-      category: 'confidence',
-      isLocked: true,
-      isCompleted: false,
-      progress: 0
-    },
-    {
-      moduleId: '5',
-      name: 'Building Lasting Friendships',
-      description: 'Learn how to nurture and maintain meaningful long-term relationships.',
-      category: 'communication',
-      isLocked: true,
-      isCompleted: false,
-      progress: 0
+  // Fetch skill modules from API
+  useEffect(() => {
+    const fetchSkillModules = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedCategory !== 'all') {
+          params.append('category', selectedCategory);
+        }
+
+        const response = await fetch(`/api/skills?${params}`);
+        const result = await response.json();
+
+        if (result.success) {
+          setSkillModules(result.data);
+        } else {
+          console.error('Failed to fetch skill modules:', result.error);
+          // Fallback to mock data
+          setSkillModules([
+            {
+              moduleId: '1',
+              name: 'Starting Conversations',
+              description: 'Learn effective techniques to initiate meaningful conversations with confidence.',
+              category: 'communication',
+              isLocked: false,
+              isCompleted: true,
+              progress: 100
+            },
+            {
+              moduleId: '2',
+              name: 'Active Listening Skills',
+              description: 'Master the art of truly hearing and understanding others in conversations.',
+              category: 'listening',
+              isLocked: false,
+              isCompleted: false,
+              progress: 60
+            },
+            {
+              moduleId: '3',
+              name: 'Understanding Emotions',
+              description: 'Develop deeper empathy by recognizing and responding to emotional cues.',
+              category: 'empathy',
+              isLocked: false,
+              isCompleted: false,
+              progress: 30
+            },
+            {
+              moduleId: '4',
+              name: 'Overcoming Social Anxiety',
+              description: 'Build confidence and reduce anxiety in social situations with proven strategies.',
+              category: 'confidence',
+              isLocked: true,
+              isCompleted: false,
+              progress: 0
+            },
+            {
+              moduleId: '5',
+              name: 'Building Lasting Friendships',
+              description: 'Learn how to nurture and maintain meaningful long-term relationships.',
+              category: 'communication',
+              isLocked: true,
+              isCompleted: false,
+              progress: 0
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching skill modules:', error);
+        // Fallback to mock data
+        setSkillModules([
+          {
+            moduleId: '1',
+            name: 'Starting Conversations',
+            description: 'Learn effective techniques to initiate meaningful conversations with confidence.',
+            category: 'communication',
+            isLocked: false,
+            isCompleted: true,
+            progress: 100
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSkillModules();
+  }, [selectedCategory]);
+
+  const filteredModules = skillModules;
+  const completedModules = skillModules.filter(m => m.isCompleted).length;
+  const totalModules = skillModules.length;
+  const overallProgress = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+
+  const handleStartModule = async (moduleId: string) => {
+    try {
+      // For demo purposes, we'll simulate progress updates
+      // In a real app, this would track actual module completion
+      const progressIncrease = Math.floor(Math.random() * 30) + 10; // 10-40% progress
+
+      const response = await fetch('/api/skills', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          moduleId,
+          userId: user.userId,
+          progress: progressIncrease,
+          completed: Math.random() > 0.7 // 30% chance of completion
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        setSkillModules(prevModules =>
+          prevModules.map(module =>
+            module.moduleId === moduleId
+              ? result.data
+              : module
+          )
+        );
+      } else {
+        console.error('Failed to update skill module:', result.error);
+      }
+    } catch (error) {
+      console.error('Error updating skill module:', error);
     }
-  ];
-
-  const filteredModules = mockSkillModules.filter(module => {
-    if (selectedCategory === 'all') return true;
-    return module.category === selectedCategory;
-  });
-
-  const completedModules = mockSkillModules.filter(m => m.isCompleted).length;
-  const totalModules = mockSkillModules.length;
-  const overallProgress = Math.round((completedModules / totalModules) * 100);
-
-  const handleStartModule = (moduleId: string) => {
-    console.log('Starting module:', moduleId);
-    // Implement module start logic
   };
 
   return (
@@ -144,20 +213,29 @@ export function SkillsView({ user, onBack }: SkillsViewProps) {
 
       {/* Skill Modules */}
       <div className="px-6 space-y-4">
-        {filteredModules.map((module) => (
-          <SkillModuleCard
-            key={module.moduleId}
-            module={module}
-            onStart={() => handleStartModule(module.moduleId)}
-          />
-        ))}
-
-        {filteredModules.length === 0 && (
+        {loading ? (
           <div className="text-center py-12">
-            <Brain className="w-16 h-16 text-white/20 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No modules found</h3>
-            <p className="text-white/60">Try selecting a different category.</p>
+            <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-white/60">Loading skill modules...</p>
           </div>
+        ) : (
+          <>
+            {filteredModules.map((module) => (
+              <SkillModuleCard
+                key={module.moduleId}
+                module={module}
+                onStart={() => handleStartModule(module.moduleId)}
+              />
+            ))}
+
+            {filteredModules.length === 0 && (
+              <div className="text-center py-12">
+                <Brain className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No modules found</h3>
+                <p className="text-white/60">Try selecting a different category.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
