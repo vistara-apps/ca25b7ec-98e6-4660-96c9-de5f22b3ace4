@@ -1,0 +1,30 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "frame": {
+    "version": "1",
+    "name": "EchoSphere",
+    "subtitle": "Built with Zara",
+    "description": "EchoSphere is a Base Mini App built with Zara.",
+    "iconUrl": "https://0co.to/images/zara-2.png",
+    "homeUrl": "https://ca25b7ec98e6466096c9de5f22b3ace4-o8ag.vercel.app",
+    "splashImageUrl": "https://ca25b7ec98e6466096c9de5f22b3ace4-o8ag.vercel.app/splash.png",
+    "splashBackgroundColor": "#000000",
+    "heroImageUrl": "https://ca25b7ec98e6466096c9de5f22b3ace4-o8ag.vercel.app/image.png",
+    "tagline": "EchoSphere",
+    "screenshotUrls": [
+      "https://ca25b7ec98e6466096c9de5f22b3ace4-o8ag.vercel.app/screenshot.png",
+      "https://ca25b7ec98e6466096c9de5f22b3ace4-o8ag.vercel.app/screenshot.png"
+    ],
+    "primaryCategory": "social",
+    "tags": [
+      "base",
+      "miniapp",
+      "onchainkit"
+    ],
+    "webhookUrl": "https://ca25b7ec98e6466096c9de5f22b3ace4-o8ag.vercel.app/api/webhook"
+  }
+}

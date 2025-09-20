@@ -20,7 +20,13 @@
       "https://echosphere.app/screenshot3.png"
     ],
     "primaryCategory": "social",
-    "tags": ["support", "community", "mental-health", "ai-companion", "social"],
+    "tags": [
+      "support",
+      "community",
+      "mental-health",
+      "ai-companion",
+      "social"
+    ],
     "heroImageUrl": "https://echosphere.app/hero.png",
     "tagline": "Connect, support, grow together",
     "ogTitle": "EchoSphere - Find your people, share your journey",
